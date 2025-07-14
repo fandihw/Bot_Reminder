@@ -1,0 +1,5 @@
+python-telegram-bot==22.2
+gspread
+google-auth
+APScheduler
+python-dotenv
