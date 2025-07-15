@@ -1,12 +1,29 @@
-from telegram.ext import Application
-from handlers.reminder import schedule_reminder
+from telegram.ext import (
+    ApplicationBuilder,
+    CallbackQueryHandler,
+    MessageHandler,
+    filters,
+    ConversationHandler,
+)
+from handlers.callback_handler import handle_callback_query, handle_keterangan_input, EDIT_KETERANGAN, KONFIRMASI_KETERANGAN
 from config import TELEGRAM_TOKEN
+from start import create_scheduler  # ✅ Ini sekarang akan berhasil
+
+async def start_scheduler(app):
+    scheduler = create_scheduler(app)
+    scheduler.start()
 
 def main():
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(start_scheduler).build()
 
-    # Jadwalkan reminder otomatis
-    schedule_reminder(app)
+    app.add_handler(ConversationHandler(
+        entry_points=[CallbackQueryHandler(handle_callback_query)],
+        states={
+            EDIT_KETERANGAN: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_keterangan_input)],
+            KONFIRMASI_KETERANGAN: [CallbackQueryHandler(handle_callback_query)],
+        },
+        fallbacks=[]
+    ))
 
     print("Bot Reminder berjalan...")
     app.run_polling()

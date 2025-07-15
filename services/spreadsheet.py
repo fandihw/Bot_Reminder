@@ -80,10 +80,35 @@ def get_keterangan_by_id(idnumber):
         if cell:
             row = cell.row
             header_row = worksheet.row_values(1)
+            values_row = worksheet.row_values(row)
             header_dict = {h.strip().upper(): h for h in header_row}
-            if "KETERANGAN" in header_dict:
-                kolom_keterangan = header_row.index(header_dict["KETERANGAN"]) + 1
-                return worksheet.cell(row, kolom_keterangan).value
+
+            kolom_keterangan = header_row.index(header_dict.get("KETERANGAN", "KETERANGAN")) + 1
+            kolom_nama = header_row.index(header_dict.get("BP NAME", "BP NAME")) + 1
+
+            keterangan = values_row[kolom_keterangan - 1] if kolom_keterangan <= len(values_row) else ""
+            nama = values_row[kolom_nama - 1] if kolom_nama <= len(values_row) else ""
+
+            return {"keterangan": keterangan, "nama": nama}
     except gspread.exceptions.CellNotFound:
         print(f"[ERROR] ID Pelanggan {idnumber} tidak ditemukan saat mengambil keterangan")
-    return ""
+    return {"keterangan": "", "nama": ""}
+
+def get_bp_name_by_id(idnumber):
+    worksheet = client.open_by_key(SPREADSHEET_ID).sheet1
+    try:
+        # Temukan baris berdasarkan ID Pelanggan
+        cell = worksheet.find(str(idnumber))
+        if cell:
+            row = cell.row
+            header_row = worksheet.row_values(1)
+            values_row = worksheet.row_values(row)
+            header_dict = {h.strip().upper(): h for h in header_row}
+
+            kolom_nama = header_row.index(header_dict.get("BP NAME", "BP NAME")) + 1
+            nama = values_row[kolom_nama - 1] if kolom_nama <= len(values_row) else ""
+
+            return nama or "Tidak diketahui"
+    except gspread.exceptions.CellNotFound:
+        print(f"[ERROR] ID Pelanggan {idnumber} tidak ditemukan saat mencari BP Name")
+    return "Tidak ditemukan"
