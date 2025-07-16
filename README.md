@@ -1,4 +1,4 @@
-# ⏰ Invoice Reminder Telegram Bot
+# ⏰ Reminder Telegram Bot
 
 Bot Telegram otomatis yang digunakan untuk mengirimkan pengingat pembayaran kepada Account Manager (AM) berdasarkan data dari **Google Spreadsheet**. Bot ini membantu proses follow-up tagihan pelanggan secara efisien, terstruktur, dan terdokumentasi.
 
