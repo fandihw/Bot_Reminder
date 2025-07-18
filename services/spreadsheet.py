@@ -146,122 +146,43 @@ def get_bp_name_by_id(idnumber):
         logging.error(f"[get_bp_name_by_id] {e}")
     return "Tidak ditemukan"
 
-
-'''
-import gspread
-from google.oauth2.service_account import Credentials
-from datetime import datetime
-from config import SPREADSHEET_ID
-
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-creds = Credentials.from_service_account_file(
-    'credentials/service_account.json',
-    scopes=SCOPES
-)
-client = gspread.authorize(creds)
-
-def get_invoice_reminder_data():
-    worksheet = client.open_by_key(SPREADSHEET_ID).worksheet("CYC 2025")
-    rows = worksheet.get_all_records()
-    header_row = worksheet.row_values(1)
-
-    # Normalisasi header
-    normalized_header = [h.strip().upper() for h in header_row]
-    header_dict = {h.strip().upper(): h for h in header_row}
-
-    # Mapping bulan
-    bulan_map = {
-        "JANUARY": "JANUARI",
-        "FEBRUARY": "FEBRUARI",
-        "MARCH": "MARET",
-        "APRIL": "APRIL",
-        "MAY": "MEI",
-        "JUNE": "JUNI",
-        "JULY": "JULI",
-        "AUGUST": "AGUSTUS",
-        "SEPTEMBER": "SEPTEMBER",
-        "OCTOBER": "OKTOBER",
-        "NOVEMBER": "NOVEMBER",
-        "DECEMBER": "DESEMBER"
-    }
-
-    # ⛳ UJI BULAN AGUSTUS —> Ubah ke bulan lain jika ingin simulasi
-    bulan_inggris = "AUGUST"
-    print(f"[TESTING] Simulasi bulan: {bulan_inggris}")
-
-    bulan_indo = bulan_map.get(bulan_inggris, bulan_inggris)
-    kolom_bulan_norm = f"CYC {bulan_indo}".upper()
-
-    if kolom_bulan_norm not in header_dict:
-        print(f"[PERINGATAN] Kolom '{kolom_bulan_norm}' tidak ditemukan")
-        print("[DEBUG] Header tersedia:", header_row)
-        return []
-
-    kolom_bulan_asli = header_dict[kolom_bulan_norm]
-
-    result = []
-    for row in rows:
-        if str(row.get("STATUS", "")).strip().upper() == "PU":
-            result.append({
-                "idnumber": row.get("id Pelanggan", ""),
-                "nama": row.get("BP Name", ""),
-                "am": row.get("AM", "").strip(),
-                "bulan": bulan_indo.capitalize(),
-                "nilai": row.get(kolom_bulan_asli, ""),
-                "status": row.get("STATUS", "")
-            })
-    return result
-
-def update_keterangan_by_id(idnumber, keterangan):
-    worksheet = client.open_by_key(SPREADSHEET_ID).worksheet("CYC 2025")
+def get_keterangan_updates_by_date(target_date):
+    """Ambil semua update keterangan yang terjadi pada tanggal tertentu (YYYY-MM-DD)"""
     try:
-        cell = worksheet.find(str(idnumber))
-        if cell:
-            row = cell.row
-            header_row = worksheet.row_values(1)
-            header_dict = {h.strip().upper(): h for h in header_row}
-            if "KETERANGAN" in header_dict:
-                kolom_keterangan = header_row.index(header_dict["KETERANGAN"]) + 1
-                worksheet.update_cell(row, kolom_keterangan, keterangan)
-    except gspread.exceptions.CellNotFound:
-        print(f"[ERROR] ID Pelanggan {idnumber} tidak ditemukan di spreadsheet")
+        worksheet = get_cyc_worksheet()
+        header_row = worksheet.row_values(1)
+        kolom_update_idx = get_column_index(header_row, "Last Update")
+        kolom_am_idx = get_column_index(header_row, "AM")
+        kolom_nama_idx = get_column_index(header_row, "BP Name")
 
-def get_keterangan_by_id(idnumber):
-    worksheet = client.open_by_key(SPREADSHEET_ID).worksheet("CYC 2025")
-    try:
-        cell = worksheet.find(str(idnumber))
-        if cell:
-            row = cell.row
-            header_row = worksheet.row_values(1)
-            values_row = worksheet.row_values(row)
-            header_dict = {h.strip().upper(): h for h in header_row}
+        if None in (kolom_update_idx, kolom_am_idx, kolom_nama_idx):
+            raise ValueError("Kolom yang dibutuhkan tidak lengkap")
 
-            kolom_keterangan = header_row.index(header_dict.get("KETERANGAN", "KETERANGAN")) + 1
-            kolom_nama = header_row.index(header_dict.get("BP NAME", "BP NAME")) + 1
+        all_rows = worksheet.get_all_values()[1:]  # skip header
+        result = {}
 
-            keterangan = values_row[kolom_keterangan - 1] if kolom_keterangan <= len(values_row) else ""
-            nama = values_row[kolom_nama - 1] if kolom_nama <= len(values_row) else ""
+        if isinstance(target_date, datetime):
+            target_date_str = target_date.strftime("%Y-%m-%d")
+        else:
+            target_date_str = str(target_date)
 
-            return {"keterangan": keterangan, "nama": nama}
-    except gspread.exceptions.CellNotFound:
-        print(f"[ERROR] ID Pelanggan {idnumber} tidak ditemukan saat mengambil keterangan")
-    return {"keterangan": "", "nama": ""}
+        for row in all_rows:
+            if kolom_update_idx >= len(row):
+                continue
+            last_update = row[kolom_update_idx].strip()
 
-def get_bp_name_by_id(idnumber):
-    worksheet = client.open_by_key(SPREADSHEET_ID).worksheet("CYC 2025")
-    try:
-        cell = worksheet.find(str(idnumber))
-        if cell:
-            row = cell.row
-            header_row = worksheet.row_values(1)
-            values_row = worksheet.row_values(row)
-            header_dict = {h.strip().upper(): h for h in header_row}
+            if not last_update.startswith(target_date_str):
+                continue
 
-            kolom_nama = header_row.index(header_dict.get("BP NAME", "BP NAME")) + 1
-            nama = values_row[kolom_nama - 1] if kolom_nama <= len(values_row) else ""
+            # ✅ Normalize nama AM
+            am = row[kolom_am_idx].strip().upper() if kolom_am_idx < len(row) else "TIDAK DIKETAHUI"
+            nama_pelanggan = row[kolom_nama_idx].strip() if kolom_nama_idx < len(row) else "Tanpa nama"
 
-            return nama or "Tidak diketahui"
-    except gspread.exceptions.CellNotFound:
-        print(f"[ERROR] ID Pelanggan {idnumber} tidak ditemukan saat mencari BP Name")
-    return "Tidak ditemukan"
-'''
+            if am not in result:
+                result[am] = []
+            result[am].append(nama_pelanggan)
+
+        return result
+    except Exception as e:
+        logging.error(f"[get_keterangan_updates_by_date] {e}")
+        return {}
