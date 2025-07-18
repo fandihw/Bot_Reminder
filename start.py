@@ -7,8 +7,9 @@ def create_scheduler(app):
         send_reminders,
         trigger='cron',
         day='15-31',
-        hour=8,         #jam 08:00 WIB
-        minute=0,   
+        hour=10,         #jam 08:00 WIB
+        minute=5,
+        second=0,  #<----- buat testing 
         args=[app],
         id='daily_invoice_reminder'
     )
