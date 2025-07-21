@@ -25,14 +25,31 @@ async def send_daily_keterangan_report(bot):
 
         logging.debug(f"Ada {len(updates)} update untuk tanggal {yesterday}")
 
-        if not updates:
-            logging.info("Tidak ada update keterangan untuk dikirim")
+        manager_ids = load_manager_ids()
+        logging.debug(f"Manager IDs: {manager_ids}")
+
+        if not manager_ids:
+            logging.warning("Tidak ada ID manager yang ditemukan. Laporan tidak dikirim")
             return
 
-        # Header pesan (tanggal perlu di-escape)
+        if not updates:
+            message = (
+                f"*📋 Laporan Update Keterangan \\({escape_markdown(str(yesterday), version=2)}\\)*\n\n"
+                f"⚠️ Tidak ada AM yang melakukan update data pada tanggal tersebut"
+            )
+            for manager_id in manager_ids:
+                await bot.send_message(
+                    chat_id=manager_id,
+                    text=message,
+                    parse_mode=ParseMode.MARKDOWN_V2
+                )
+                logging.info(f"[✓] Notifikasi kosong dikirim ke {manager_id}")
+                print(f"[✓] Tidak ada update, pesan kosong dikirim ke Manager -> {manager_id}")
+            return
+
+        # Jika ada update, kirim seperti biasa
         message = f"*📋 Laporan Update Keterangan \\({escape_markdown(str(yesterday), version=2)}\\)*\n\n"
 
-        # Tambahkan per AM
         for am, pelanggan_list in updates.items():
             escaped_am = escape_markdown(am.upper(), version=2)
             message += f"👤 *{escaped_am}*\n"
@@ -41,14 +58,6 @@ async def send_daily_keterangan_report(bot):
                 message += f"• {escaped_pelanggan}\n"
             message += "\n"
 
-        manager_ids = load_manager_ids()
-        logging.debug(f"Manager IDs: {manager_ids}")
-
-        if not manager_ids:
-            logging.warning("Tidak ada ID manager yang ditemukan. Laporan tidak dikirim")
-            return
-
-        # Kirim ke semua manager dan log status
         for manager_id in manager_ids:
             await bot.send_message(
                 chat_id=manager_id,

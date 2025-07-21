@@ -12,9 +12,9 @@ def create_scheduler(app):
         send_all_reports,
         trigger='cron',
         day='15-31',
-        hour=8,    # 08:00 WIB 
-        minute=0,
-        second=0,  # testing
+        hour=9,    # 08:00 WIB 
+        minute=21,
+        second=9,  # testing
         args=[app],
         id='daily_invoice_reminder'
     )
