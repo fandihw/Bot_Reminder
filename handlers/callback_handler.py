@@ -100,7 +100,6 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             parse_mode="MarkdownV2"
         )
 
-        # ✋ Pesan tambahan santai
         await query.message.reply_text(
             "Oke, nggak jadi disimpan ya. 👍\n"
             "Kalau berubah pikiran, tinggal coba lagi kapan aja."
